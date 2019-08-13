@@ -886,6 +886,37 @@ impl WriteBatch {
             inner: unsafe { rocksdb_ffi::rocksdb_writebatch_create() },
         }
     }
+
+    pub fn delete_range(&self,
+              start: &[u8],
+              end: &[u8])
+              -> Result<(), String> {
+        unsafe {
+            rocksdb_ffi::rocksdb_writebatch_delete_range(self.inner,
+                                                         start.as_ptr(),
+                                                         start.len() as size_t,
+                                                         end.as_ptr(),
+                                                         end.len() as size_t);
+            Ok(())
+        }
+    }
+
+    pub fn delete_range_cf(&self,
+              cf: Column,
+              start: &[u8],
+              end: &[u8])
+              -> Result<(), String> {
+        unsafe {
+            rocksdb_ffi::rocksdb_writebatch_delete_range_cf(self.inner,
+                                                            cf.inner,
+                                                            start.as_ptr(),
+                                                            start.len() as size_t,
+                                                            end.as_ptr(),
+                                                            end.len() as size_t);
+            Ok(())
+        }
+    }
+
 }
 
 impl Drop for WriteBatch {
@@ -978,6 +1009,7 @@ impl Writable for WriteBatch {
             Ok(())
         }
     }
+
 }
 
 // rocksdb guarantees synchronization
@@ -1218,6 +1250,37 @@ mod tests {
             let p = db.write(batch);
             assert!(p.is_ok());
             assert!(db.get(b"k1").unwrap().is_none());
+        }
+    }
+
+    #[test]
+    fn writebatch_range_delete_works() {
+        let db = db("_rust_rocksdb_writebackrangetest");
+        {
+            // test put
+            let batch = WriteBatch::new();
+            assert!(db.get(b"k1").unwrap().is_none());
+            let _ = batch.put(b"k1", b"v1111");
+            let _ = batch.put(b"k2", b"v1111");
+            let _ = batch.put(b"l", b"v1111");
+            let _ = batch.put(b"l1", b"v1111");
+            assert!(db.get(b"k1").unwrap().is_none());
+            let p = db.write(batch);
+            assert!(p.is_ok());
+            let r: Result<Option<DBVector>, String> = db.get(b"k1");
+            assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+        }
+        {
+            // test delete
+            let batch = WriteBatch::new();
+            let _ = batch.delete_range(b"k1", b"l");
+            assert!(db.get(b"k1").unwrap().is_some());
+            let p = db.write(batch);
+            assert!(p.is_ok());
+            assert!(db.get(b"k1").unwrap().is_none());
+            assert!(db.get(b"k2").unwrap().is_none());
+            assert!(db.get(b"l").unwrap().is_some());
+            assert!(db.get(b"l1").unwrap().is_some());
         }
     }
 

@@ -387,6 +387,17 @@ extern "C" {
     pub fn rocksdb_writebatch_data(batch: DBWriteBatch,
                                    size: *mut size_t)
                                    -> *const u8;
+    pub fn rocksdb_writebatch_delete_range(batch: DBWriteBatch,
+                                           start_key: *const u8,
+                                           start_key_len: size_t,
+                                           end_key: *const u8,
+                                           end_key_len: size_t);
+    pub fn rocksdb_writebatch_delete_range_cf(batch: DBWriteBatch,
+                                              cf: DBCFHandle,
+                                              start_key: *const u8,
+                                              start_key_len: size_t,
+                                              end_key: *const u8,
+                                              end_key_len: size_t);
 
     // Comparator
     pub fn rocksdb_options_set_comparator(options: DBOptions,
